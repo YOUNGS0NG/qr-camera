@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR Camera Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 520px;
+      margin: 25px auto;
+      padding: 15px;
+      text-align: center;
+    }
+    #reader { width: 100%; margin: 20px auto; }
+    button {
+      padding: 13px 24px;
+      border: 0;
+      border-radius: 8px;
+      background: #315d85;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #status { margin: 15px; }
+  </style>
+</head>
+<body>
+  <h2>สแกน QR วัตถุดิบ</h2>
+  <p>กรุณาอนุญาตให้เว็บไซต์ใช้กล้อง</p>
+
+  <div id="reader"></div>
+  <button id="start">เปิดกล้อง</button>
+  <p id="status">รอเปิดกล้อง...</p>
+
+  <script>
+    let scanner = null;
+    let running = false;
+    let finished = false;
+
+    document.getElementById("start").onclick = async () => {
+      if (running) return;
+
+      try {
+        scanner = new Html5Qrcode("reader");
+
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText) => {
+            if (finished) return;
+            finished = true;
+
+            document.getElementById("status").textContent =
+              "อ่าน QR สำเร็จ: " + decodedText;
+
+            try {
+              await scanner.stop();
+            } catch (e) {}
+
+            running = false;
+
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({
+                type: "QR_SCANNED",
+                text: decodedText
+              }, "*");
+
+              setTimeout(() => window.close(), 700);
+            } else {
+              document.getElementById("status").textContent =
+                "ไม่พบหน้าระบบหลัก กรุณาเปิดจากระบบเบิกวัตถุดิบ";
+            }
+          }
+        );
+
+        running = true;
+        document.getElementById("status").textContent =
+          "เปิดกล้องแล้ว กรุณาจ่อ QR Code";
+      } catch (err) {
+        document.getElementById("status").textContent =
+          "เปิดกล้องไม่สำเร็จ: " + err;
+      }
+    };
+  </script>
+</body>
+</html>
